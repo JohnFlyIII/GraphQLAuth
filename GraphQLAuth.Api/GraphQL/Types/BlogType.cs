@@ -1,6 +1,7 @@
 using HotChocolate;
 using HotChocolate.Types;
 using HotChocolate.Resolvers;
+using HotChocolate.Authorization;
 using GraphQLAuth.Api.Models;
 using GraphQLAuth.Api.Auth;
 using System.Security.Claims;
@@ -12,6 +13,9 @@ public class BlogType : ObjectType<Blog>
     protected override void Configure(IObjectTypeDescriptor<Blog> descriptor)
     {
         descriptor.Description("Represents a blog post in the system");
+
+        // Apply authorization to the entire type - users must be authenticated
+        descriptor.Authorize();
 
         descriptor.Field(b => b.Id)
             .Description("The unique identifier of the blog");
@@ -46,23 +50,18 @@ public class BlogType : ObjectType<Blog>
         descriptor.Field(b => b.Tags)
             .Description("Tags associated with the blog post");
 
-        // Field-level authorization for BlogOwnerNotes
+        // Field-level authorization using HotChocolate policy with context-aware handler
         descriptor.Field(b => b.BlogOwnerNotes)
             .Description("Private notes visible only to blog owners and system admins")
+            .Authorize(AuthConstants.Policies.RequireBlogOwnerNotesAccess)
             .Resolve(context =>
             {
                 var blog = context.Parent<Blog>();
-                var user = context.GetGlobalState<ClaimsPrincipal>("ClaimsPrincipal");
-                var authService = context.Service<IAuthorizationService>();
-
-                // Only show notes to system admins or client owners
-                if (authService.IsSystemAdmin(user) || 
-                    authService.HasClientRole(user, blog.ClientId, AuthConstants.Roles.ClientOwner))
-                {
-                    return blog.BlogOwnerNotes;
-                }
-
-                return null;
+                
+                // Check the authorization result stored by the handler
+                var hasAccess = context.GetScopedState<bool?>("BlogOwnerNotesAccess") ?? false;
+                
+                return hasAccess ? blog.BlogOwnerNotes : null;
             });
     }
 }

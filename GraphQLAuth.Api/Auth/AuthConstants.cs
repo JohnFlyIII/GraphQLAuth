@@ -15,5 +15,7 @@ public static class AuthConstants
     {
         public const string RequireAuthenticated = "RequireAuthenticated";
         public const string RequireSystemAdmin = "RequireSystemAdmin";
+        public const string RequireClientOwnerOrAdmin = "RequireClientOwnerOrAdmin";
+        public const string RequireBlogOwnerNotesAccess = "RequireBlogOwnerNotesAccess";
     }
 }
