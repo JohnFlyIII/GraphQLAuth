@@ -44,25 +44,27 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(AuthConstants.Policies.RequireAuthenticated,
         policy => policy.RequireAuthenticatedUser());
-    
+
     options.AddPolicy(AuthConstants.Policies.RequireSystemAdmin,
         policy => policy.RequireAuthenticatedUser()
             .AddRequirements(new ClientAccessRequirement(AuthConstants.Roles.SystemAdmin)));
-            
+
     options.AddPolicy(AuthConstants.Policies.RequireClientOwnerOrAdmin,
         policy => policy.RequireAuthenticatedUser()
             .AddRequirements(new ClientOwnerRequirement()));
-            
+
     options.AddPolicy(AuthConstants.Policies.RequireBlogOwnerNotesAccess,
         policy => policy.RequireAuthenticatedUser()
             .AddRequirements(new BlogOwnerNotesRequirement()));
 });
 
 // Add custom services
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<GraphQLAuth.Api.Auth.IAuthorizationService, GraphQLAuth.Api.Auth.AuthorizationService>();
 builder.Services.AddScoped<IAuthorizationHandler, ClientAccessHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, ClientOwnerHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, BlogOwnerNotesHandler>();
+builder.Services.AddScoped<BlogsAuthorizer>();
 
 // Add GraphQL
 builder.Services
@@ -73,10 +75,10 @@ builder.Services
     .AddFiltering()
     .AddSorting()
     .AddAuthorization()
-    .AddHttpRequestInterceptor<HttpRequestInterceptor>()
+    // .AddHttpRequestInterceptor<HttpRequestInterceptor>()
     .AddMaxExecutionDepthRule(5)  // Prevent deeply nested queries
     .SetMaxAllowedValidationErrors(10)  // Limit validation errors
-    .ModifyRequestOptions(opt => 
+    .ModifyRequestOptions(opt =>
     {
         opt.IncludeExceptionDetails = builder.Environment.IsDevelopment();
         opt.ExecutionTimeout = TimeSpan.FromSeconds(30);
