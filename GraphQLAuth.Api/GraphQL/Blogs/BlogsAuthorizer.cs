@@ -1,37 +1,60 @@
 using System.Security.Claims;
+using System.Linq.Expressions;
 using GraphQLAuth.Api.Auth;
 using GraphQLAuth.Api.Models;
-using Npgsql.Replication;
+using GraphQLAuth.Api.GraphQL.Authorization;
+using Microsoft.Extensions.Logging;
 
-public class BlogsAuthorizer
+namespace GraphQLAuth.Api.GraphQL.Blogs;
+
+public class BlogsAuthorizer : BaseClientAuthorizer<Blog>
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly IAuthorizationService _authService;
-
-    public BlogsAuthorizer(IHttpContextAccessor httpContextAccessor, IAuthorizationService authService)
+    public BlogsAuthorizer(
+        IHttpContextAccessor httpContextAccessor, 
+        IAuthorizationService authService,
+        ILogger<BaseClientAuthorizer<Blog>> logger) 
+        : base(httpContextAccessor, authService, logger)
     {
-        _httpContextAccessor = httpContextAccessor;
-        _authService = authService;
     }
 
-    public IQueryable<Blog> AuthorizeFilter(IQueryable<Blog> query)
+    protected override Expression<Func<Blog, Guid>> GetClientIdExpression()
     {
-        var user = (_httpContextAccessor.HttpContext?.User) ?? throw new Exception("user is null");
-        // No change if admin
-        if (_authService.IsSystemAdmin(user))
+        return blog => blog.ClientId;
+    }
+
+    /// <summary>
+    /// Check if user can view blog owner notes (ClientOwner role required)
+    /// </summary>
+    public bool CanViewBlogOwnerNotes(ClaimsPrincipal user, Blog blog)
+    {
+        if (!user.Identity?.IsAuthenticated == true)
         {
-            return query;
+            _logger.LogDebug("Unauthenticated user attempting to access blog owner notes for blog {BlogId}", blog.Id);
+            return false;
         }
 
-        // Filter to only clients they have access to
-        var clientRoles = _authService.GetClientRoles(user);
-        var allowedClientIds = clientRoles
-            .Where(cr => cr.RoleId == AuthConstants.Roles.ClientOwner || cr.RoleId == AuthConstants.Roles.ClientUser)
-            .Select(cr => cr.ClientId)
-            .Distinct()
-            .ToList();
+        // System admin can see all notes
+        if (_authService.IsSystemAdmin(user))
+        {
+            _logger.LogDebug("SystemAdmin {UserId} accessing blog owner notes for blog {BlogId}", 
+                user.Identity.Name, blog.Id);
+            return true;
+        }
 
-        return query.Where(b => allowedClientIds.Contains(b.ClientId));
+        // Must have access to the blog AND be a ClientOwner
+        if (!CanAccess(user, blog))
+        {
+            _logger.LogWarning("User {UserId} denied access to blog {BlogId} - no client access", 
+                user.Identity.Name, blog.Id);
+            return false;
+        }
 
+        var hasOwnerRole = _authService.HasClientRole(user, blog.ClientId, AuthConstants.Roles.ClientOwner);
+        
+        _logger.LogDebug("User {UserId} {Access} access to blog owner notes for blog {BlogId} (ClientId: {ClientId})", 
+            user.Identity.Name, hasOwnerRole ? "granted" : "denied", blog.Id, blog.ClientId);
+
+        // Only client owners can see notes
+        return hasOwnerRole;
     }
 }

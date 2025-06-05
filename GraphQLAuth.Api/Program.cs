@@ -2,22 +2,38 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Options;
 using System.Text;
 using HotChocolate;
 using GraphQLAuth.Api.Auth;
 using GraphQLAuth.Api.Data;
 using GraphQLAuth.Api.GraphQL;
 using GraphQLAuth.Api.GraphQL.Types;
+using GraphQLAuth.Api.GraphQL.Blogs;
+using GraphQLAuth.Api.GraphQL.Assets;
+using Serilog;
+using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 // Configure JWT settings
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings();
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 
 // Add Entity Framework with PostgreSQL
-builder.Services.AddDbContext<AppDbContext>(options =>
+builder.Services.AddPooledDbContextFactory<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<AppDbContext>(provider => 
+    provider.GetRequiredService<IDbContextFactory<AppDbContext>>().CreateDbContext());
+
 
 // Add Authentication
 builder.Services.AddAuthentication(options =>
@@ -56,6 +72,10 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(AuthConstants.Policies.RequireBlogOwnerNotesAccess,
         policy => policy.RequireAuthenticatedUser()
             .AddRequirements(new BlogOwnerNotesRequirement()));
+
+    options.AddPolicy(AuthConstants.Policies.RequireClientTenant,
+        policy => policy.RequireAuthenticatedUser()
+            .AddRequirements(new ClientTenantRequirement()));
 });
 
 // Add custom services
@@ -64,13 +84,20 @@ builder.Services.AddScoped<GraphQLAuth.Api.Auth.IAuthorizationService, GraphQLAu
 builder.Services.AddScoped<IAuthorizationHandler, ClientAccessHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, ClientOwnerHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, BlogOwnerNotesHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, ClientTenantRequirementHandler>();
 builder.Services.AddScoped<BlogsAuthorizer>();
+builder.Services.AddScoped<AssetAuthorizer>();
+builder.Services.AddScoped<TokenGenerator>(provider => 
+    new TokenGenerator(provider.GetRequiredService<IOptions<JwtSettings>>().Value));
 
 // Add GraphQL
 builder.Services
     .AddGraphQLServer()
+    .RegisterDbContextFactory<AppDbContext>()  
     .AddQueryType<Query>()
+    .AddMutationType<Mutation>()
     .AddType<BlogType>()
+    .AddType<AssetType>()
     .AddProjections()
     .AddFiltering()
     .AddSorting()
@@ -97,12 +124,55 @@ builder.Services
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-app.UseAuthentication();
-app.UseAuthorization();
+try
+{
+    Log.Information("Starting GraphQL Auth API");
 
-app.MapGraphQL();
+    // Seed the database
+    using (var scope = app.Services.CreateScope())
+    {
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await GraphQLAuth.Api.DbSeeder.SeedAsync(context);
+    }
 
-app.Run();
+    // Configure the HTTP request pipeline.
+    app.UseSerilogRequestLogging(options =>
+    {
+        options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+        options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+        {
+            diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value);
+            diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
+            diagnosticContext.Set("UserAgent", httpContext.Request.Headers.UserAgent.FirstOrDefault());
+            
+            if (httpContext.User.Identity?.IsAuthenticated == true)
+            {
+                diagnosticContext.Set("UserId", httpContext.User.Identity.Name);
+                var clientRoles = httpContext.User.FindAll("client_roles")
+                    .Select(c => c.Value)
+                    .ToList();
+                if (clientRoles.Any())
+                {
+                    diagnosticContext.Set("ClientRoles", clientRoles);
+                }
+            }
+        };
+    });
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.MapGraphQL();
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 public partial class Program { }

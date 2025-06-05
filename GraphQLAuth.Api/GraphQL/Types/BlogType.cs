@@ -4,6 +4,7 @@ using HotChocolate.Resolvers;
 using HotChocolate.Authorization;
 using GraphQLAuth.Api.Models;
 using GraphQLAuth.Api.Auth;
+using GraphQLAuth.Api.Data;
 using System.Security.Claims;
 
 namespace GraphQLAuth.Api.GraphQL.Types;
@@ -63,5 +64,9 @@ public class BlogType : ObjectType<Blog>
                 
                 return hasAccess ? blog.BlogOwnerNotes : null;
             });
+
+        // Navigation property for Assets
+        descriptor.Field(b => b.Assets)
+            .Description("Assets used in this blog post");
     }
 }

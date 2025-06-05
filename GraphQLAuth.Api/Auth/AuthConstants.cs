@@ -3,6 +3,7 @@ namespace GraphQLAuth.Api.Auth;
 public static class AuthConstants
 {
     public const string ClientRolesClaim = "client_roles";
+    public const string ClientIdClaim = "client_id";
     
     public static class Roles
     {
@@ -17,5 +18,6 @@ public static class AuthConstants
         public const string RequireSystemAdmin = "RequireSystemAdmin";
         public const string RequireClientOwnerOrAdmin = "RequireClientOwnerOrAdmin";
         public const string RequireBlogOwnerNotesAccess = "RequireBlogOwnerNotesAccess";
+        public const string RequireClientTenant = "RequireClientTenant";
     }
 }

@@ -24,12 +24,21 @@ public class AuthorizationIntegrationTests : IClassFixture<GraphQLAuthWebApplica
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         
         // Clear existing data
+        dbContext.Assets.RemoveRange(dbContext.Assets);
         dbContext.Blogs.RemoveRange(dbContext.Blogs);
+        dbContext.Clients.RemoveRange(dbContext.Clients);
         await dbContext.SaveChangesAsync();
         
         // Add test data
+        var clients = TestDataFactory.CreateTestClients();
+        dbContext.Clients.AddRange(clients);
+        
         var blogs = TestDataFactory.CreateTestBlogs();
         dbContext.Blogs.AddRange(blogs);
+        
+        var assets = TestDataFactory.CreateTestAssets();
+        dbContext.Assets.AddRange(assets);
+        
         await dbContext.SaveChangesAsync();
     }
 
@@ -89,9 +98,9 @@ public class AuthorizationIntegrationTests : IClassFixture<GraphQLAuthWebApplica
         var clientIds = response.Data.Blogs.Select(b => b.ClientId).Distinct();
         clientIds.Should().BeEquivalentTo(new[] 
         { 
-            TestDataFactory.Clients.AcmeCorp,
-            TestDataFactory.Clients.TechStartup,
-            TestDataFactory.Clients.MediaCompany
+            TestDataFactory.Clients.LizProBloggers,
+            TestDataFactory.Clients.DavidsDiscountContent,
+            TestDataFactory.Clients.PaulsPremiumBlogs
         });
     }
 
@@ -100,7 +109,7 @@ public class AuthorizationIntegrationTests : IClassFixture<GraphQLAuthWebApplica
     {
         // Arrange
         await SeedDatabase();
-        var token = JwtTokenGenerator.GenerateClientOwnerToken(TestDataFactory.Clients.AcmeCorp);
+        var token = JwtTokenGenerator.GenerateClientOwnerToken(TestDataFactory.Clients.LizProBloggers);
         _client.SetAuthorizationToken(token);
         
         var query = @"
@@ -120,7 +129,7 @@ public class AuthorizationIntegrationTests : IClassFixture<GraphQLAuthWebApplica
         response.Errors.Should().BeNullOrEmpty();
         response.Data.Should().NotBeNull();
         response.Data!.Blogs.Should().HaveCount(2); // Only AcmeCorp blogs
-        response.Data.Blogs.Should().OnlyContain(b => b.ClientId == TestDataFactory.Clients.AcmeCorp);
+        response.Data.Blogs.Should().OnlyContain(b => b.ClientId == TestDataFactory.Clients.LizProBloggers);
         response.Data.Blogs.Should().OnlyContain(b => b.BlogOwnerNotes != null);
     }
 
@@ -129,7 +138,7 @@ public class AuthorizationIntegrationTests : IClassFixture<GraphQLAuthWebApplica
     {
         // Arrange
         await SeedDatabase();
-        var token = JwtTokenGenerator.GenerateClientUserToken(TestDataFactory.Clients.TechStartup);
+        var token = JwtTokenGenerator.GenerateClientUserToken(TestDataFactory.Clients.DavidsDiscountContent);
         _client.SetAuthorizationToken(token);
         
         var query = @"
@@ -150,7 +159,7 @@ public class AuthorizationIntegrationTests : IClassFixture<GraphQLAuthWebApplica
         response.Errors.Should().BeNullOrEmpty();
         response.Data.Should().NotBeNull();
         response.Data!.Blogs.Should().HaveCount(2); // Only TechStartup blogs
-        response.Data.Blogs.Should().OnlyContain(b => b.ClientId == TestDataFactory.Clients.TechStartup);
+        response.Data.Blogs.Should().OnlyContain(b => b.ClientId == TestDataFactory.Clients.DavidsDiscountContent);
         response.Data.Blogs.Should().OnlyContain(b => b.BlogOwnerNotes == null); // No owner notes for ClientUser
     }
 
@@ -161,8 +170,8 @@ public class AuthorizationIntegrationTests : IClassFixture<GraphQLAuthWebApplica
         await SeedDatabase();
         var roles = new[]
         {
-            new ClientRole(TestDataFactory.Clients.AcmeCorp, AuthConstants.Roles.ClientOwner),
-            new ClientRole(TestDataFactory.Clients.TechStartup, AuthConstants.Roles.ClientUser)
+            new ClientRole(TestDataFactory.Clients.LizProBloggers, AuthConstants.Roles.ClientOwner),
+            new ClientRole(TestDataFactory.Clients.DavidsDiscountContent, AuthConstants.Roles.ClientUser)
         };
         var token = JwtTokenGenerator.GenerateMultiClientToken(roles);
         _client.SetAuthorizationToken(token);
@@ -183,17 +192,17 @@ public class AuthorizationIntegrationTests : IClassFixture<GraphQLAuthWebApplica
         // Assert
         response.Errors.Should().BeNullOrEmpty();
         response.Data.Should().NotBeNull();
-        response.Data!.Blogs.Should().HaveCount(4); // 2 from AcmeCorp + 2 from TechStartup
+        response.Data!.Blogs.Should().HaveCount(4); // 2 from LizProBloggers + 2 from DavidsDiscountContent
         
-        // AcmeCorp blogs should have owner notes (ClientOwner role)
-        var acmeBlogs = response.Data.Blogs.Where(b => b.ClientId == TestDataFactory.Clients.AcmeCorp);
-        acmeBlogs.Should().HaveCount(2);
-        acmeBlogs.Should().OnlyContain(b => b.BlogOwnerNotes != null);
+        // LizProBloggers blogs should have owner notes (ClientOwner role)
+        var lizBlogs = response.Data.Blogs.Where(b => b.ClientId == TestDataFactory.Clients.LizProBloggers);
+        lizBlogs.Should().HaveCount(2);
+        lizBlogs.Should().OnlyContain(b => b.BlogOwnerNotes != null);
         
-        // TechStartup blogs should NOT have owner notes (ClientUser role)
-        var techBlogs = response.Data.Blogs.Where(b => b.ClientId == TestDataFactory.Clients.TechStartup);
-        techBlogs.Should().HaveCount(2);
-        techBlogs.Should().OnlyContain(b => b.BlogOwnerNotes == null);
+        // DavidsDiscountContent blogs should NOT have owner notes (ClientUser role)
+        var davidBlogs = response.Data.Blogs.Where(b => b.ClientId == TestDataFactory.Clients.DavidsDiscountContent);
+        davidBlogs.Should().HaveCount(2);
+        davidBlogs.Should().OnlyContain(b => b.BlogOwnerNotes == null);
     }
 
     [Fact]
@@ -203,9 +212,9 @@ public class AuthorizationIntegrationTests : IClassFixture<GraphQLAuthWebApplica
         await SeedDatabase();
         using var scope = _factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var mediaCompanyBlog = dbContext.Blogs.First(b => b.ClientId == TestDataFactory.Clients.MediaCompany);
+        var paulsBlog = dbContext.Blogs.First(b => b.ClientId == TestDataFactory.Clients.PaulsPremiumBlogs);
         
-        var token = JwtTokenGenerator.GenerateClientOwnerToken(TestDataFactory.Clients.AcmeCorp);
+        var token = JwtTokenGenerator.GenerateClientOwnerToken(TestDataFactory.Clients.LizProBloggers);
         _client.SetAuthorizationToken(token);
         
         var query = @"
@@ -218,7 +227,7 @@ public class AuthorizationIntegrationTests : IClassFixture<GraphQLAuthWebApplica
             }";
 
         // Act
-        var response = await _client.QueryAsync<BlogResponse>(query, new { id = mediaCompanyBlog.Id });
+        var response = await _client.QueryAsync<BlogResponse>(query, new { id = paulsBlog.Id });
 
         // Assert
         response.Errors.Should().BeNullOrEmpty();
@@ -263,7 +272,7 @@ public class AuthorizationIntegrationTests : IClassFixture<GraphQLAuthWebApplica
     {
         // Arrange
         await SeedDatabase();
-        var token = JwtTokenGenerator.GenerateClientUserToken(TestDataFactory.Clients.TechStartup);
+        var token = JwtTokenGenerator.GenerateClientUserToken(TestDataFactory.Clients.DavidsDiscountContent);
         _client.SetAuthorizationToken(token);
         
         var query = @"
@@ -282,7 +291,7 @@ public class AuthorizationIntegrationTests : IClassFixture<GraphQLAuthWebApplica
         // Assert
         response.Errors.Should().BeNullOrEmpty();
         response.Data.Should().NotBeNull();
-        response.Data!.Blogs.Should().OnlyContain(b => b.ClientId == TestDataFactory.Clients.TechStartup);
+        response.Data!.Blogs.Should().OnlyContain(b => b.ClientId == TestDataFactory.Clients.DavidsDiscountContent);
         response.Data.Blogs.Should().OnlyContain(b => b.IsPublished == true);
     }
 }

@@ -16,4 +16,7 @@ public class Blog
     public DateTime UpdatedAt { get; set; }
     public DateTime? PublishedAt { get; set; }
     public string[] Tags { get; set; } = Array.Empty<string>();
+    
+    // Navigation property for many-to-many relationship with Assets
+    public virtual ICollection<Asset> Assets { get; set; } = new List<Asset>();
 }
