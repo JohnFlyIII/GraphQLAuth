@@ -68,10 +68,10 @@ builder.Services.AddAuthentication(options =>
 // Add Authorization
 builder.Services.AddAuthorization(options =>
 {
-    // Legacy policies (keeping for compatibility)
-    options.AddPolicy(AuthConstants.Policies.RequireBlogOwnerNotesAccess,
+    // Generic client owner role policy
+    options.AddPolicy(AuthConstants.Policies.RequireClientOwnerRole,
         policy => policy.RequireAuthenticatedUser()
-            .AddRequirements(new BlogOwnerNotesRequirement()));
+            .AddRequirements(new ClientOwnerRoleRequirement()));
 
     options.AddPolicy(AuthConstants.Policies.RequireClientTenant,
         policy => policy.RequireAuthenticatedUser()
@@ -82,9 +82,6 @@ builder.Services.AddAuthorization(options =>
         policy => policy.RequireAuthenticatedUser()
             .AddRequirements(new AnyRoleRequirement()));
 
-    options.AddPolicy(AuthConstants.Policies.RequireAssetDataAccess,
-        policy => policy.RequireAuthenticatedUser()
-            .AddRequirements(new AnyRoleRequirement(AuthConstants.Roles.ClientOwner)));
 
     options.AddPolicy(AuthConstants.Policies.RequireSystemAdmin,
         policy => policy.RequireAuthenticatedUser()
@@ -95,7 +92,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<GraphQLAuth.Api.Auth.IAuthorizationService, GraphQLAuth.Api.Auth.AuthorizationService>();
 // Legacy authorization handlers (keeping for compatibility)
-builder.Services.AddScoped<IAuthorizationHandler, BlogOwnerNotesHandler>();
+builder.Services.AddScoped<IAuthorizationHandler, ClientOwnerRoleHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, ClientTenantRequirementHandler>();
 
 // New resource-based authorization handlers

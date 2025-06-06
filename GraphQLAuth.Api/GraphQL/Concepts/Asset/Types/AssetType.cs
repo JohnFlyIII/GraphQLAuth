@@ -45,13 +45,31 @@ public class AssetType : ObjectType<Models.Asset>
         descriptor.Field(a => a.Base64Data)
             .Type<StringType>()
             .Description("Base64 encoded asset data (ClientOwner only)")
-            .Authorize(AuthConstants.Policies.RequireAssetDataAccess);
+            .Authorize(AuthConstants.Policies.RequireClientOwnerRole)
+            .Resolve(context =>
+            {
+                var asset = context.Parent<Models.Asset>();
+                
+                // Check the authorization result stored by the handler
+                var hasAccess = context.GetScopedState<bool?>("ClientOwnerRoleAccess") ?? false;
+                
+                return hasAccess ? asset.Base64Data : null;
+            });
 
         // Restricted field - only ClientOwners can access the actual asset data
         descriptor.Field(a => a.Url)
             .Type<StringType>()
             .Description("URL to the asset (ClientOwner only)")
-            .Authorize(AuthConstants.Policies.RequireAssetDataAccess);
+            .Authorize(AuthConstants.Policies.RequireClientOwnerRole)
+            .Resolve(context =>
+            {
+                var asset = context.Parent<Models.Asset>();
+                
+                // Check the authorization result stored by the handler
+                var hasAccess = context.GetScopedState<bool?>("ClientOwnerRoleAccess") ?? false;
+                
+                return hasAccess ? asset.Url : null;
+            });
 
         // Navigation property for Blogs (many-to-many)
         descriptor.Field(a => a.Blogs)

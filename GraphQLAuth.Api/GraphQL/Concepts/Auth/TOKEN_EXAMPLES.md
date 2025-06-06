@@ -72,26 +72,40 @@ query GetAllBlogs {
 }
 ```
 
-### ClientOwner - Can see their client's data + BlogOwnerNotes
+### ClientOwner - Can see their client's data + sensitive fields
 ```graphql
-query GetMyBlogs {
+query GetMyBlogsAsOwner {
   blogs {
     id
     title
     clientId
     blogOwnerNotes  # Only ClientOwners can see this
   }
+  assetLibrary {
+    id
+    name
+    type
+    base64Data  # Only ClientOwners can see actual asset data
+    url         # Only ClientOwners can see actual asset URLs
+  }
 }
 ```
 
-### ClientUser - Can see their client's data (no BlogOwnerNotes)
+### ClientUser - Can see their client's data (no sensitive fields)
 ```graphql
-query GetMyBlogsUser {
+query GetMyBlogsAsUser {
   blogs {
     id
     title
     clientId
     # blogOwnerNotes - This will be null for ClientUser
+  }
+  assetLibrary {
+    id
+    name
+    type
+    # base64Data - This will be null for ClientUser
+    # url        - This will be null for ClientUser
   }
 }
 ```

@@ -51,13 +51,13 @@ public class BlogType : ObjectType<Models.Blog>
         // Field-level authorization using HotChocolate policy with context-aware handler
         descriptor.Field(b => b.BlogOwnerNotes)
             .Description("Private notes visible only to blog owners and system admins")
-            .Authorize(AuthConstants.Policies.RequireBlogOwnerNotesAccess)
+            .Authorize(AuthConstants.Policies.RequireClientOwnerRole)
             .Resolve(context =>
             {
                 var blog = context.Parent<Models.Blog>();
                 
                 // Check the authorization result stored by the handler
-                var hasAccess = context.GetScopedState<bool?>("BlogOwnerNotesAccess") ?? false;
+                var hasAccess = context.GetScopedState<bool?>("ClientOwnerRoleAccess") ?? false;
                 
                 return hasAccess ? blog.BlogOwnerNotes : null;
             });
