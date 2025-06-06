@@ -1,22 +1,19 @@
 using HotChocolate;
 using HotChocolate.Types;
-using HotChocolate.Resolvers;
 using HotChocolate.Authorization;
 using GraphQLAuth.Api.Models;
 using GraphQLAuth.Api.Auth;
-using GraphQLAuth.Api.Data;
-using System.Security.Claims;
 
-namespace GraphQLAuth.Api.GraphQL.Types;
+namespace GraphQLAuth.Api.GraphQL.Concepts.Blog.Types;
 
-public class BlogType : ObjectType<Blog>
+public class BlogType : ObjectType<Models.Blog>
 {
-    protected override void Configure(IObjectTypeDescriptor<Blog> descriptor)
+    protected override void Configure(IObjectTypeDescriptor<Models.Blog> descriptor)
     {
         descriptor.Description("Represents a blog post in the system");
 
-        // Apply authorization to the entire type - users must be authenticated
-        descriptor.Authorize();
+        // Client access control is handled at query level via BlogsAuthorizer filtering
+        // No type-level authorization needed
 
         descriptor.Field(b => b.Id)
             .Description("The unique identifier of the blog");
@@ -57,7 +54,7 @@ public class BlogType : ObjectType<Blog>
             .Authorize(AuthConstants.Policies.RequireBlogOwnerNotesAccess)
             .Resolve(context =>
             {
-                var blog = context.Parent<Blog>();
+                var blog = context.Parent<Models.Blog>();
                 
                 // Check the authorization result stored by the handler
                 var hasAccess = context.GetScopedState<bool?>("BlogOwnerNotesAccess") ?? false;

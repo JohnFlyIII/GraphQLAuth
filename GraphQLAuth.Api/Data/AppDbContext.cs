@@ -12,6 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<Blog> Blogs { get; set; } = null!;
     public DbSet<Client> Clients { get; set; } = null!;
     public DbSet<Asset> Assets { get; set; } = null!;
+    public DbSet<Status> Status { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -65,6 +66,27 @@ public class AppDbContext : DbContext
                     j.HasIndex("BlogId");
                     j.HasIndex("AssetId");
                 });
+
+        modelBuilder.Entity<Status>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Health).IsRequired();
+            entity.Property(e => e.LastUpdated).IsRequired();
+            entity.Property(e => e.SupportContact).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.SystemVersion).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.Notes).HasMaxLength(1000);
+            
+            // Seed default status record
+            entity.HasData(new Status
+            {
+                Id = 1,
+                Health = HealthStatus.Healthy,
+                LastUpdated = new DateTimeOffset(2025, 6, 5, 20, 0, 0, TimeSpan.Zero),
+                SupportContact = "support@demoapp.com",
+                SystemVersion = "1.0.0",
+                Notes = "System initialized"
+            });
+        });
 
         base.OnModelCreating(modelBuilder);
     }

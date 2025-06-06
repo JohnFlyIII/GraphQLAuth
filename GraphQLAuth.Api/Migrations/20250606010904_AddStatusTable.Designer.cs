@@ -3,6 +3,7 @@ using System;
 using GraphQLAuth.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GraphQLAuth.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250606010904_AddStatusTable")]
+    partial class AddStatusTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -196,7 +199,7 @@ namespace GraphQLAuth.Api.Migrations
                         {
                             Id = 1,
                             Health = 0,
-                            LastUpdated = new DateTimeOffset(new DateTime(2025, 6, 5, 20, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            LastUpdated = new DateTimeOffset(new DateTime(2025, 6, 6, 1, 9, 3, 638, DateTimeKind.Unspecified).AddTicks(2190), new TimeSpan(0, 0, 0, 0, 0)),
                             Notes = "System initialized",
                             SupportContact = "support@demoapp.com",
                             SystemVersion = "1.0.0"

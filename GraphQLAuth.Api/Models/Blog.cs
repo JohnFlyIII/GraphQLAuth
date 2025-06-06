@@ -1,8 +1,9 @@
 using System;
+using GraphQLAuth.Api.Auth;
 
 namespace GraphQLAuth.Api.Models;
 
-public class Blog
+public class Blog : IClientResource
 {
     public Guid Id { get; set; }
     public Guid ClientId { get; set; }

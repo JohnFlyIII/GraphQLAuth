@@ -8,9 +8,19 @@ using HotChocolate;
 using GraphQLAuth.Api.Auth;
 using GraphQLAuth.Api.Data;
 using GraphQLAuth.Api.GraphQL;
-using GraphQLAuth.Api.GraphQL.Types;
-using GraphQLAuth.Api.GraphQL.Blogs;
-using GraphQLAuth.Api.GraphQL.Assets;
+using GraphQLAuth.Api.GraphQL.Concepts.Blog.Types;
+using GraphQLAuth.Api.GraphQL.Concepts.Blog.Queries;
+using GraphQLAuth.Api.GraphQL.Concepts.Blog.Mutations;
+using GraphQLAuth.Api.GraphQL.Concepts.Asset.Types;
+using GraphQLAuth.Api.GraphQL.Concepts.Asset.Queries;
+using GraphQLAuth.Api.GraphQL.Concepts.Asset.Mutations;
+using GraphQLAuth.Api.GraphQL.Concepts.Status.Types;
+using GraphQLAuth.Api.GraphQL.Concepts.Status.Queries;
+using GraphQLAuth.Api.GraphQL.Concepts.Status.Mutations;
+using GraphQLAuth.Api.GraphQL.Concepts.Auth.Queries;
+using GraphQLAuth.Api.GraphQL.Concepts.Auth.Mutations;
+using GraphQLAuth.Api.GraphQL.Authorization;
+using GraphQLAuth.Api.Models;
 using Serilog;
 using Serilog.Events;
 
@@ -58,17 +68,7 @@ builder.Services.AddAuthentication(options =>
 // Add Authorization
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy(AuthConstants.Policies.RequireAuthenticated,
-        policy => policy.RequireAuthenticatedUser());
-
-    options.AddPolicy(AuthConstants.Policies.RequireSystemAdmin,
-        policy => policy.RequireAuthenticatedUser()
-            .AddRequirements(new ClientAccessRequirement(AuthConstants.Roles.SystemAdmin)));
-
-    options.AddPolicy(AuthConstants.Policies.RequireClientOwnerOrAdmin,
-        policy => policy.RequireAuthenticatedUser()
-            .AddRequirements(new ClientOwnerRequirement()));
-
+    // Legacy policies (keeping for compatibility)
     options.AddPolicy(AuthConstants.Policies.RequireBlogOwnerNotesAccess,
         policy => policy.RequireAuthenticatedUser()
             .AddRequirements(new BlogOwnerNotesRequirement()));
@@ -76,17 +76,33 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(AuthConstants.Policies.RequireClientTenant,
         policy => policy.RequireAuthenticatedUser()
             .AddRequirements(new ClientTenantRequirement()));
+
+    // New resource-based policies
+    options.AddPolicy(AuthConstants.Policies.RequireAnyRole,
+        policy => policy.RequireAuthenticatedUser()
+            .AddRequirements(new AnyRoleRequirement()));
+
+    options.AddPolicy(AuthConstants.Policies.RequireAssetDataAccess,
+        policy => policy.RequireAuthenticatedUser()
+            .AddRequirements(new AnyRoleRequirement(AuthConstants.Roles.ClientOwner)));
+
+    options.AddPolicy(AuthConstants.Policies.RequireSystemAdmin,
+        policy => policy.RequireAuthenticatedUser()
+            .AddRequirements(new AnyRoleRequirement(AuthConstants.Roles.SystemAdmin)));
 });
 
 // Add custom services
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<GraphQLAuth.Api.Auth.IAuthorizationService, GraphQLAuth.Api.Auth.AuthorizationService>();
-builder.Services.AddScoped<IAuthorizationHandler, ClientAccessHandler>();
-builder.Services.AddScoped<IAuthorizationHandler, ClientOwnerHandler>();
+// Legacy authorization handlers (keeping for compatibility)
 builder.Services.AddScoped<IAuthorizationHandler, BlogOwnerNotesHandler>();
 builder.Services.AddScoped<IAuthorizationHandler, ClientTenantRequirementHandler>();
-builder.Services.AddScoped<BlogsAuthorizer>();
-builder.Services.AddScoped<AssetAuthorizer>();
+
+// New resource-based authorization handlers
+builder.Services.AddScoped<IAuthorizationHandler, AnyRoleAuthorizationHandler>();
+// Generic client resource authorizers
+builder.Services.AddScoped<ClientResourceAuthorizer<Blog>>();
+builder.Services.AddScoped<ClientResourceAuthorizer<Asset>>();
 builder.Services.AddScoped<TokenGenerator>(provider => 
     new TokenGenerator(provider.GetRequiredService<IOptions<JwtSettings>>().Value));
 
@@ -94,15 +110,29 @@ builder.Services.AddScoped<TokenGenerator>(provider =>
 builder.Services
     .AddGraphQLServer()
     .RegisterDbContextFactory<AppDbContext>()  
-    .AddQueryType<Query>()
-    .AddMutationType<Mutation>()
+    .AddQueryType(d => d.Name("Query"))
+    .AddMutationType(d => d.Name("Mutation"))
+    // Blog concept
+    .AddTypeExtension<GetBlogs>()
+    .AddTypeExtension<GetBlog>()
+    .AddTypeExtension<CreateBlog>()
+    .AddTypeExtension<AssociateBlogAsset>()
     .AddType<BlogType>()
-    .AddType<AssetType>()
+    // Asset concept  
+    .AddTypeExtension<GetAssetLibrary>()
+    .AddTypeExtension<CreateAsset>()
+    .AddType<GraphQLAuth.Api.GraphQL.Concepts.Asset.Types.AssetType>()
+    // Status concept
+    .AddTypeExtension<GetStatus>()
+    .AddTypeExtension<UpdateStatus>()
+    .AddType<StatusType>()
+    // Auth concept
+    .AddTypeExtension<GetTestClientIds>()
+    .AddTypeExtension<GraphQLAuth.Api.GraphQL.Concepts.Auth.Mutations.GenerateToken>()
     .AddProjections()
     .AddFiltering()
     .AddSorting()
     .AddAuthorization()
-    // .AddHttpRequestInterceptor<HttpRequestInterceptor>()
     .AddMaxExecutionDepthRule(5)  // Prevent deeply nested queries
     .SetMaxAllowedValidationErrors(10)  // Limit validation errors
     .ModifyRequestOptions(opt =>

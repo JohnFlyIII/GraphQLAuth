@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using GraphQLAuth.Api.Auth;
 
 namespace GraphQLAuth.Api.Models;
 
@@ -9,7 +10,7 @@ public enum AssetType
     Audio
 }
 
-public class Asset
+public class Asset : IClientResource
 {
     public Guid Id { get; set; }
     public Guid ClientId { get; set; }

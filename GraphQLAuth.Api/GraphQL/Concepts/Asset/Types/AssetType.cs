@@ -1,21 +1,19 @@
 using HotChocolate;
 using HotChocolate.Types;
 using HotChocolate.Authorization;
-using HotChocolate.Resolvers;
 using GraphQLAuth.Api.Models;
-using GraphQLAuth.Api.GraphQL.Assets;
-using System.Security.Claims;
+using GraphQLAuth.Api.Auth;
 
-namespace GraphQLAuth.Api.GraphQL.Types;
+namespace GraphQLAuth.Api.GraphQL.Concepts.Asset.Types;
 
-public class AssetType : ObjectType<Asset>
+public class AssetType : ObjectType<Models.Asset>
 {
-    protected override void Configure(IObjectTypeDescriptor<Asset> descriptor)
+    protected override void Configure(IObjectTypeDescriptor<Models.Asset> descriptor)
     {
         descriptor.Description("Represents an asset (image or audio) in the system");
         
-        // Apply authorization to the entire type - users must be authenticated
-        descriptor.Authorize();
+        // Client access control is handled at query level via AssetAuthorizer filtering
+        // No type-level authorization needed
         
         descriptor.BindFieldsExplicitly();
         
@@ -47,37 +45,13 @@ public class AssetType : ObjectType<Asset>
         descriptor.Field(a => a.Base64Data)
             .Type<StringType>()
             .Description("Base64 encoded asset data (ClientOwner only)")
-            .Resolve(context =>
-            {
-                var asset = context.Parent<Asset>();
-                var claimsPrincipal = context.GetGlobalState<ClaimsPrincipal>("ClaimsPrincipal");
-                var assetAuthorizer = context.Service<AssetAuthorizer>();
-                
-                if (claimsPrincipal != null && assetAuthorizer.CanViewAssetData(claimsPrincipal, asset))
-                {
-                    return asset.Base64Data;
-                }
-                
-                return null; // Hide data from ClientUsers
-            });
+            .Authorize(AuthConstants.Policies.RequireAssetDataAccess);
 
         // Restricted field - only ClientOwners can access the actual asset data
         descriptor.Field(a => a.Url)
             .Type<StringType>()
             .Description("URL to the asset (ClientOwner only)")
-            .Resolve(context =>
-            {
-                var asset = context.Parent<Asset>();
-                var claimsPrincipal = context.GetGlobalState<ClaimsPrincipal>("ClaimsPrincipal");
-                var assetAuthorizer = context.Service<AssetAuthorizer>();
-                
-                if (claimsPrincipal != null && assetAuthorizer.CanViewAssetData(claimsPrincipal, asset))
-                {
-                    return asset.Url;
-                }
-                
-                return null; // Hide data from ClientUsers
-            });
+            .Authorize(AuthConstants.Policies.RequireAssetDataAccess);
 
         // Navigation property for Blogs (many-to-many)
         descriptor.Field(a => a.Blogs)

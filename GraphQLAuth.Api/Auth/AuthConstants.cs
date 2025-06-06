@@ -14,10 +14,10 @@ public static class AuthConstants
     
     public static class Policies
     {
-        public const string RequireAuthenticated = "RequireAuthenticated";
-        public const string RequireSystemAdmin = "RequireSystemAdmin";
-        public const string RequireClientOwnerOrAdmin = "RequireClientOwnerOrAdmin";
         public const string RequireBlogOwnerNotesAccess = "RequireBlogOwnerNotesAccess";
         public const string RequireClientTenant = "RequireClientTenant";
+        public const string RequireAssetDataAccess = "RequireAssetDataAccess";
+        public const string RequireAnyRole = "RequireAnyRole";
+        public const string RequireSystemAdmin = "RequireSystemAdmin";
     }
 }

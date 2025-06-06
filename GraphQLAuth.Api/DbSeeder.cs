@@ -14,6 +14,7 @@ public static class DbSeeder
         await context.Database.EnsureCreatedAsync();
         
         // Clear all existing data (respecting foreign key constraints)
+        // Note: Status table is not cleared as it uses HasData seeding and should remain as singleton
         await context.Database.ExecuteSqlRawAsync("DELETE FROM \"Assets\"");
         await context.Database.ExecuteSqlRawAsync("DELETE FROM \"Blogs\"");
         await context.Database.ExecuteSqlRawAsync("DELETE FROM \"Clients\"");
