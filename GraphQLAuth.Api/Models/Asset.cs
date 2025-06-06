@@ -38,6 +38,7 @@ public class Asset : IClientResource
         return (Base64Data != null && Url == null) || (Base64Data == null && Url != null);
     }
     
-    // Navigation property for many-to-many relationship with Blogs
+    // Navigation properties
+    public virtual Client? Client { get; set; }
     public virtual ICollection<Blog> Blogs { get; set; } = new List<Blog>();
 }

@@ -18,6 +18,7 @@ public class Blog : IClientResource
     public DateTime? PublishedAt { get; set; }
     public string[] Tags { get; set; } = Array.Empty<string>();
     
-    // Navigation property for many-to-many relationship with Assets
+    // Navigation properties
+    public virtual Client? Client { get; set; }
     public virtual ICollection<Asset> Assets { get; set; } = new List<Asset>();
 }

@@ -19,6 +19,7 @@ using GraphQLAuth.Api.GraphQL.Concepts.Status.Queries;
 using GraphQLAuth.Api.GraphQL.Concepts.Status.Mutations;
 using GraphQLAuth.Api.GraphQL.Concepts.Auth.Queries;
 using GraphQLAuth.Api.GraphQL.Concepts.Auth.Mutations;
+using GraphQLAuth.Api.GraphQL.Concepts.Client.Types;
 using GraphQLAuth.Api.GraphQL.Authorization;
 using GraphQLAuth.Api.Models;
 using Serilog;
@@ -126,6 +127,8 @@ builder.Services
     // Auth concept
     .AddTypeExtension<GetTestClientIds>()
     .AddTypeExtension<GraphQLAuth.Api.GraphQL.Concepts.Auth.Mutations.GenerateToken>()
+    // Client type (navigation only, no top-level queries)
+    .AddType<ClientType>()
     .AddProjections()
     .AddFiltering()
     .AddSorting()

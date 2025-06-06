@@ -71,7 +71,10 @@ public class AssetType : ObjectType<Models.Asset>
                 return hasAccess ? asset.Url : null;
             });
 
-        // Navigation property for Blogs (many-to-many)
+        // Navigation properties
+        descriptor.Field(a => a.Client)
+            .Description("The client organization this asset belongs to");
+            
         descriptor.Field(a => a.Blogs)
             .Description("Blogs that this asset is associated with");
             

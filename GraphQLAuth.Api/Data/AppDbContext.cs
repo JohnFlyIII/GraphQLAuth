@@ -31,6 +31,12 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.ClientId);
             entity.HasIndex(e => e.IsPublished);
             entity.HasIndex(e => e.CreatedAt);
+            
+            // Configure foreign key relationship to Client
+            entity.HasOne(e => e.Client)
+                .WithMany()
+                .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<Client>(entity =>
@@ -50,6 +56,12 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.ClientId);
             entity.HasIndex(e => e.Type);
             entity.HasIndex(e => e.CreatedAt);
+            
+            // Configure foreign key relationship to Client
+            entity.HasOne(e => e.Client)
+                .WithMany()
+                .HasForeignKey(e => e.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Configure many-to-many relationship between Blog and Asset

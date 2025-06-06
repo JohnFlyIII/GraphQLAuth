@@ -80,6 +80,22 @@ query GetMyBlogsAsOwner {
     title
     clientId
     blogOwnerNotes  # Only ClientOwners can see this
+    client {        # Navigate to Client information
+      clientId
+      name
+      description
+    }
+    assets {
+      id
+      name
+      type
+      base64Data  # Only ClientOwners can see actual asset data
+      url         # Only ClientOwners can see actual asset URLs
+      client {    # Navigate to Client information from Asset too
+        clientId
+        name
+      }
+    }
   }
   assetLibrary {
     id
@@ -87,6 +103,11 @@ query GetMyBlogsAsOwner {
     type
     base64Data  # Only ClientOwners can see actual asset data
     url         # Only ClientOwners can see actual asset URLs
+    client {
+      clientId
+      name
+      description
+    }
   }
 }
 ```
@@ -99,6 +120,22 @@ query GetMyBlogsAsUser {
     title
     clientId
     # blogOwnerNotes - This will be null for ClientUser
+    client {        # Can still navigate to Client information
+      clientId
+      name
+      description
+    }
+    assets {
+      id
+      name
+      type
+      # base64Data - This will be null for ClientUser
+      # url        - This will be null for ClientUser
+      client {
+        clientId
+        name
+      }
+    }
   }
   assetLibrary {
     id
@@ -106,6 +143,11 @@ query GetMyBlogsAsUser {
     type
     # base64Data - This will be null for ClientUser
     # url        - This will be null for ClientUser
+    client {
+      clientId
+      name
+      description
+    }
   }
 }
 ```

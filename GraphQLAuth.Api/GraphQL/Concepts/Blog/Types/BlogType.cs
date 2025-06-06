@@ -62,7 +62,10 @@ public class BlogType : ObjectType<Models.Blog>
                 return hasAccess ? blog.BlogOwnerNotes : null;
             });
 
-        // Navigation property for Assets
+        // Navigation properties
+        descriptor.Field(b => b.Client)
+            .Description("The client organization this blog belongs to");
+            
         descriptor.Field(b => b.Assets)
             .Description("Assets used in this blog post");
     }
