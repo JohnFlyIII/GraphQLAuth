@@ -12,16 +12,16 @@ namespace GraphQLAuth.Api.GraphQL.Authorization;
 public class ClientResourceAuthorizer<T> : BaseClientAuthorizer<T> where T : class, IClientResource
 {
     public ClientResourceAuthorizer(
-        IHttpContextAccessor httpContextAccessor, 
+        IHttpContextAccessor httpContextAccessor,
         IAuthorizationService authService,
-        ILogger<BaseClientAuthorizer<T>> logger) 
+        ILogger<BaseClientAuthorizer<T>> logger)
         : base(httpContextAccessor, authService, logger)
     {
     }
 
-    protected override Expression<Func<T, Guid>> GetClientIdExpression()
+    protected override IQueryable<T> AuthorizeQuery(IQueryable<T> query, IEnumerable<Guid> allowedIds)
     {
         // Uses the IClientResource interface - works for any implementing type
-        return entity => entity.ClientId;
+        return query.Where(x => allowedIds.Contains(x.ClientId));
     }
 }
